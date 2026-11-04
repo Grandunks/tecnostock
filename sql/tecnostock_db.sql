@@ -83,9 +83,9 @@ CREATE TABLE movimiento (
 ) ENGINE=InnoDB;
 
 INSERT INTO usuario (nombre, correo, clave, rol, estado) VALUES
-('Admin', 'admin@tecnostock.cl', 'Admin123', 1, 1),
-('Bodeguero', 'bodega@tecnostock.cl', 'Entrada123', 2, 1),
-('Vendedor', 'vendedor@tecnostock.cl', 'Salida123', 3, 1);
+('Admin', 'admin@tecnostock.cl', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1),
+('Bodeguero', 'bodega@tecnostock.cl', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2, 1),
+('Vendedor', 'vendedor@tecnostock.cl', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3, 1);
 
 INSERT INTO categoria (nombre, descripcion, estado) VALUES
 ('Periféricos', 'Teclados, ratones, audífonos y accesorios de entrada/salida', 1),
