@@ -97,9 +97,9 @@ INSERT INTO sucursal (nombre, direccion, telefono, estado) VALUES
 ('Bodega Central Poniente', 'Av. San Pablo 4200, Quinta Normal', '+5622990011', 1);
 
 INSERT INTO usuario (nombre, correo, clave, rol, estado, id_sucursal) VALUES
-('Esteban Curín (Admin)', 'admin@tecnostock.cl', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1),
-('Rodrigo Bodeguero', 'bodega@tecnostock.cl', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2, 1, 3),
-('Carlos Vendedor', 'vendedor@tecnostock.cl', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3, 1, 2);
+('Esteban Curín (Admin)', 'admin@tecnostock.cl', '$2y$10$dynO0rw/5evpsKRV9ohuseyk8FiRP0v8g6n./jOmzBNyKcrKx61Om', 1, 1, 1),
+('Rodrigo Bodeguero', 'bodega@tecnostock.cl', '$2y$10$dynO0rw/5evpsKRV9ohuseyk8FiRP0v8g6n./jOmzBNyKcrKx61Om', 2, 1, 3),
+('Carlos Vendedor', 'vendedor@tecnostock.cl', '$2y$10$dynO0rw/5evpsKRV9ohuseyk8FiRP0v8g6n./jOmzBNyKcrKx61Om', 3, 1, 2);
 
 INSERT INTO categoria (nombre, descripcion, estado) VALUES
 ('Periféricos', 'Teclados, ratones, audífonos y accesorios de entrada/salida', 1),
