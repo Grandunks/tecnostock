@@ -1,5 +1,4 @@
 <?php
-
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -13,17 +12,12 @@ function verificarAutenticacion(): void {
 
 function verificarRol(array $rolesPermitidos): void {
     verificarAutenticacion();
-    if (!in_array($_SESSION['rol'], $rolesPermitidos)) {
+    if (!in_array((int)$_SESSION['rol'],$rolesPermitidos, true)) {
         header('Location: index.php?error=acceso_denegado');
         exit;
     }
 }
 
 function obtenerNombreRol(int $rol): string {
-    return match ($rol) {
-        1 => 'Administrador',
-        2 => 'Bodeguero',
-        3 => 'Vendedor',
-        default => 'Desconocido',
-    };
+    return $rol === 1 ? 'Administrador' : 'Usuario';
 }
