@@ -14,7 +14,7 @@ $filtro_stock = trim($_GET['filtro_stock'] ?? '');
 $categorias = $pdo->query("SELECT id_categoria, nombre FROM categoria WHERE estado = 1 ORDER BY nombre ASC")->fetchAll();
 
 $sql = "SELECT p.id_producto, p.codigo, p.nombre, p.descripcion, p.imagen, p.precio, 
-               p.stock_actual, p.stock_minimo, p.estado, 
+               p.stock_actual, p.stock_minimo, p.estado, p.id_categoria,
                c.nombre AS categoria_nombre,
                pr.razon_social AS proveedor_nombre
         FROM producto p
@@ -89,6 +89,7 @@ foreach ($movsRaw as $mv) {
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="assets/theme.css" rel="stylesheet">
     <style>
         :root {
             --bg-body: #f4f7f6;
@@ -107,210 +108,323 @@ foreach ($movsRaw as $mv) {
         .nav-pill-custom.active { color: #111827; background-color: var(--emerald-primary); }
         .btn-emerald { background-color: var(--emerald-primary); color: #ffffff; font-weight: 600; border: none; transition: background 0.2s; }
         .btn-emerald:hover { background-color: var(--emerald-dark); color: #ffffff; }
-        .stat-card { background: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; border-left: 5px solid var(--emerald-primary); padding: 1.25rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .stat-card.stat-purple    { border-left-color: #6366f1; }
-        .stat-card.stat-secondary { border-left-color: #64748b; }
-        .stat-card.stat-danger    { border-left-color: var(--coral-danger); background: #fff5f5; }
-        .filter-bar, .table-container { background: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
-        .table-container { overflow: hidden; }
+
+        .kpi-tile {
+            background: #ffffff; border-radius: 14px; border: 1px solid #e5e7eb;
+            padding: 1.15rem 1.25rem; cursor: pointer; transition: all 0.2s ease;
+            position: relative; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+        .kpi-tile:hover { transform: translateY(-2px); border-color: var(--emerald-primary); box-shadow: 0 8px 18px rgba(16,185,129,0.09); }
+        .kpi-tile.kpi-selected { border: 2px solid var(--emerald-primary); background-color: #ecfdf5; }
+        .kpi-tile.kpi-danger-tile.kpi-selected { border-color: var(--coral-danger); background-color: #fef2f2; }
+        body.dark-mode .kpi-tile { background-color: #111827; border-color: #1f2937; }
+        body.dark-mode .kpi-tile.kpi-selected { background-color: rgba(16, 185, 129, 0.14); border-color: #10b981; }
+        body.dark-mode .kpi-tile.kpi-danger-tile.kpi-selected { background-color: rgba(239, 68, 68, 0.15); border-color: #ef4444; }
+        .kpi-icon-box {
+            width: 42px; height: 42px; border-radius: 10px; display: flex;
+            align-items: center; justify-content: center; font-size: 1.25rem;
+        }
+
+        .toolbar-box { background: #ffffff; border-radius: 14px; border: 1px solid #e5e7eb; padding: 1rem 1.25rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+        .cat-chip {
+            border: 1px solid #e2e8f0; background: #f8fafc; color: #475569;
+            font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.85rem;
+            border-radius: 999px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+        }
+        .cat-chip:hover { border-color: var(--emerald-primary); color: #059669; }
+        .cat-chip.active { background: #111827; color: #34d399; border-color: #111827; }
+        body.dark-mode .cat-chip { background: #161f32; border-color: #334155; color: #cbd5e1; }
+        body.dark-mode .cat-chip.active { background: #10b981; color: #111827; border-color: #10b981; }
+
+        .catalogo-wrapper { min-height: 460px; transition: opacity 0.14s ease; }
+        .catalogo-wrapper.filtrando { opacity: 0.6; }
+        .product-card {
+            background: #ffffff; border-radius: 16px; border: 1px solid #e5e7eb;
+            overflow: hidden; height: 100%; display: flex; flex-direction: column;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            cursor: pointer; position: relative;
+        }
+        .product-card:hover { transform: translateY(-4px); box-shadow: 0 14px 28px -8px rgba(17, 24, 39, 0.12); border-color: var(--emerald-primary); }
+        .product-card.card-critica { border-top: 4px solid var(--coral-danger); }
+        .product-card.card-inactiva { opacity: 0.6; filter: grayscale(0.4); }
+        body.dark-mode .product-card { background: #111827; border-color: #1f2937; }
+        body.dark-mode .product-card:hover { border-color: #10b981; }
+
+        .card-img-stage {
+            height: 175px; width: 100%; background: #ffffff; padding: 14px;
+            display: flex; align-items: center; justify-content: center;
+            border-bottom: 1px solid #f1f5f9; position: relative;
+        }
+        .card-img-stage img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+        .card-badge-top-left { position: absolute; top: 10px; left: 10px; z-index: 2; }
+        .card-badge-top-right { position: absolute; top: 10px; right: 10px; z-index: 2; }
+
+        .stock-bar-bg { height: 6px; border-radius: 999px; background-color: #e2e8f0; overflow: hidden; }
+        body.dark-mode .stock-bar-bg { background-color: #1f2937; }
+        .stock-bar-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+
+        .table-container { background: #ffffff; border-radius: 14px; border: 1px solid #e5e7eb; overflow: hidden; }
         .table thead th { background-color: #1f2937; color: #f9fafb; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.95rem 1rem; border: none; }
-        .table tbody td { padding: 0.9rem 1rem; vertical-align: middle; border-bottom: 1px solid #f3f4f6; }
+        .table tbody td { padding: 0.85rem 1rem; vertical-align: middle; border-bottom: 1px solid #f3f4f6; }
         .fila-clicable { cursor: pointer; transition: background 0.15s; }
         .fila-clicable:hover { background-color: #ecfdf5 !important; }
-        .prod-thumb { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; border: 1px solid #e5e7eb; }
-        .prod-thumb-placeholder { width: 52px; height: 52px; border-radius: 10px; background-color: #f1f5f9; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 1.3rem; }
-        .sku-tag {background-color: #111827; color: #34d399; padding: 0.28rem 0.6rem; border-radius: 6px; font-size: 0.82rem; font-weight: 700; display: inline-block; white-space: nowrap;}
-        .cat-pill { background-color: #eef2ff; color: #4f46e5; font-weight: 600; font-size: 0.78rem; padding: 0.3rem 0.65rem; border-radius: 6px; display: inline-block; }
+        .prod-thumb { width: 48px; height: 48px; border-radius: 10px; object-fit: contain; background-color: #ffffff; padding: 3px; border: 1px solid #e5e7eb; }
+        .prod-thumb-placeholder { width: 48px; height: 48px; border-radius: 10px; background-color: #f1f5f9; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 1.2rem; }
+        .sku-tag { background-color: #111827; color: #34d399; padding: 0.25rem 0.55rem; border-radius: 6px; font-size: 0.78rem; font-weight: 700; display: inline-block; white-space: nowrap; }
+        .cat-pill { background-color: #eef2ff; color: #4f46e5; font-weight: 600; font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 6px; display: inline-block; }
         .fila-alerta { background-color: #fffbeb !important; }
         .fila-apagada { opacity: 0.55; background-color: #f9fafb; }
-        .modal-img-box { width: 100%; height: 220px; border-radius: 12px; background-color: #f8fafc; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .modal-img-box img { width: 100%; height: 100%; object-fit: cover; }
+
+        .modal-img-box { width: 100%; height: 220px; border-radius: 12px; background-color: #ffffff; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 12px; }
+        .modal-img-box img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
     </style>
 </head>
 <body>
+<script src="assets/theme.js"></script>
 
-<header class="top-header sticky-top shadow-sm">
-    <div class="container-fluid px-4 d-flex flex-wrap align-items-center justify-content-between">
-        <div class="d-flex align-items-center gap-3 flex-wrap">
-            <a href="index.php" class="brand-logo me-2"><i class="bi bi-terminal-fill brand-dot me-1"></i>TECNO<span class="brand-dot">STOCK</span></a>
-            <nav class="d-flex gap-1 flex-wrap align-items-center">
-                <a href="index.php" class="nav-pill-custom active"><i class="bi bi-layers-fill me-1"></i> Catálogo</a>
-                <a href="movimientos.php" class="nav-pill-custom"><i class="bi bi-arrow-left-right me-1"></i> Movimientos</a>
-                <a href="historial_movimientos.php" class="nav-pill-custom"><i class="bi bi-journal-text me-1"></i> Registro Global</a>
-                <?php if ($rolUsuario === 1): ?>
-                    <a href="usuarios.php" class="nav-pill-custom"><i class="bi bi-people-fill me-1"></i> Usuarios</a>
-                    <a href="producto_form.php" class="nav-pill-custom"><i class="bi bi-plus-circle-fill me-1 text-success"></i> Registrar Producto</a>
-                <?php endif; ?>
-            </nav>
-        </div>
+<?php include 'includes/navbar.php'; ?>
 
-        <div class="d-flex align-items-center gap-3">
-            <span class="text-white small fw-semibold d-none d-md-inline">
-                <?= htmlspecialchars($nombreUsuario) ?>
-                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 ms-1" style="font-size: 0.68rem;">
-                    <?= strtoupper(obtenerNombreRol($rolUsuario)) ?>
-                </span>
-            </span>
-            <a href="logout.php" class="btn btn-sm btn-outline-danger px-3 fw-semibold">
-                <i class="bi bi-box-arrow-right me-1"></i>Salir
-            </a>
-        </div>
-    </div>
-</header>
-
-<main class="container-fluid px-4 py-4" style="max-width: 1400px;">
-
-    <?php if (isset($_GET['msg'])): ?>
-        <div class="alert alert-dark border-start border-4 border-success shadow-sm d-flex align-items-center justify-content-between mb-4" role="alert">
-            <div>
-                <i class="bi bi-check2-all text-success fs-5 me-2"></i>
-                <strong>Operación completada:</strong>
-                <?php
-                    if ($_GET['msg'] === 'creado') echo 'Producto incorporado al inventario.';
-                    elseif ($_GET['msg'] === 'editado') echo 'Ficha del producto actualizada.';
-                    elseif ($_GET['msg'] === 'estado_actualizado') echo 'Estado del producto modificado.';
-                ?>
-            </div>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <div class="mb-4">
-        <h3 class="fw-bold mb-0">Gestión de Existencias</h3>
-        <span class="text-muted small">Haz clic en cualquier producto para visualizar su ficha técnica e historial reciente</span>
-    </div>
+<main class="container-fluid px-4 py-4" style="max-width: 1420px;">
 
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-lg-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="text-muted small fw-bold text-uppercase">Ítems Activos</span>
-                    <i class="bi bi-cpu text-success fs-4"></i>
-                </div>
-                <div class="mt-2">
-                    <span class="fs-3 fw-bold mono"><?= (int)$kpis['productos_activos'] ?></span>
-                    <span class="text-muted small ms-1">de <?= (int)$kpis['total_productos'] ?> registrados</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-sm-6 col-lg-3">
-            <div class="stat-card stat-purple">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="text-muted small fw-bold text-uppercase">Stock Total Físico</span>
-                    <i class="bi bi-boxes text-primary fs-4"></i>
-                </div>
-                <div class="mt-2">
-                    <span class="fs-3 fw-bold mono"><?= number_format((int)$kpis['total_unidades'], 0, ',', '.') ?></span>
-                    <span class="text-muted small ms-1">unidades</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-sm-6 col-lg-3">
-            <div class="stat-card stat-secondary">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="text-muted small fw-bold text-uppercase">Productos Inactivos</span>
-                    <i class="bi bi-slash-circle text-secondary fs-4"></i>
-                </div>
-                <div class="mt-2 d-flex align-items-baseline justify-content-between">
+            <div class="kpi-tile kpi-selected" id="tileTodos" onclick="seleccionarFiltroKpi('', this)">
+                <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <span class="fs-3 fw-bold mono text-secondary"><?= (int)$kpis['productos_inactivos'] ?></span>
-                        <span class="text-muted small ms-1">en baja lógica</span>
+                        <span class="text-muted small fw-bold text-uppercase d-block">Catálogo Total</span>
+                        <span class="fs-3 fw-bold mono"><?= (int)$kpis['total_productos'] ?></span>
+                        <span class="text-muted small ms-1">ítems</span>
                     </div>
-                    <?php if ((int)$kpis['productos_inactivos'] > 0): ?>
-                        <a href="index.php?filtro_stock=inactivos" class="badge bg-secondary text-decoration-none">Ver inactivos</a>
-                    <?php endif; ?>
+                    <div class="kpi-icon-box bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-grid-1x2-fill"></i>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="col-sm-6 col-lg-3">
-            <div class="stat-card <?= (int)$kpis['alertas_criticas'] > 0 ? 'stat-danger' : '' ?>">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="text-muted small fw-bold text-uppercase">Quiebre / Críticos</span>
-                    <i class="bi bi-shield-exclamation text-danger fs-4"></i>
+            <div class="kpi-tile" id="tileActivos" onclick="seleccionarFiltroKpi('activos', this)">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block">Activos / Stock Físico</span>
+                        <span class="fs-3 fw-bold mono"><?= (int)$kpis['productos_activos'] ?></span>
+                        <span class="text-success small fw-semibold ms-1 mono">(<?= number_format((int)$kpis['total_unidades'], 0, ',', '.') ?> uds)</span>
+                    </div>
+                    <div class="kpi-icon-box bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-boxes"></i>
+                    </div>
                 </div>
-                <div class="mt-2 d-flex align-items-baseline justify-content-between">
-                    <span class="fs-3 fw-bold mono <?= (int)$kpis['alertas_criticas'] > 0 ? 'text-danger' : '' ?>">
-                        <?= (int)$kpis['alertas_criticas'] ?>
-                    </span>
-                    <?php if ((int)$kpis['alertas_criticas'] > 0): ?>
-                        <a href="index.php?filtro_stock=bajo" class="badge bg-danger text-decoration-none">Filtrar críticos</a>
-                    <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+            <div class="kpi-tile kpi-danger-tile" id="tileCriticos" onclick="seleccionarFiltroKpi('bajo', this)">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block">Stock Crítico</span>
+                        <span class="fs-3 fw-bold mono <?= (int)$kpis['alertas_criticas'] > 0 ? 'text-danger' : '' ?>">
+                            <?= (int)$kpis['alertas_criticas'] ?>
+                        </span>
+                        <span class="text-muted small ms-1">por reponer</span>
+                    </div>
+                    <div class="kpi-icon-box bg-danger bg-opacity-10 text-danger">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+            <div class="kpi-tile" id="tileInactivos" onclick="seleccionarFiltroKpi('inactivos', this)">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block">En Baja Lógica</span>
+                        <span class="fs-3 fw-bold mono text-secondary"><?= (int)$kpis['productos_inactivos'] ?></span>
+                        <span class="text-muted small ms-1">inactivos</span>
+                    </div>
+                    <div class="kpi-icon-box bg-secondary bg-opacity-10 text-secondary">
+                        <i class="bi bi-eye-slash-fill"></i>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="filter-bar p-3 mb-4">
-        <form method="GET" action="index.php" class="row g-2 align-items-center">
-            <div class="col-md-5">
+    <div class="toolbar-box mb-4">
+        <div class="row g-2 align-items-center mb-3">
+            <div class="col-md-6 col-lg-5">
                 <div class="input-group">
-                    <span class="input-group-text bg-white text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" name="busqueda" class="form-control" 
-                           placeholder="Buscar por código (ej. TEC-001) o nombre..." value="<?= htmlspecialchars($busqueda) ?>">
+                    <span class="input-group-text bg-white text-success"><i class="bi bi-search"></i></span>
+                    <input type="text" id="inputBusqueda" class="form-control" autocomplete="off"
+                           placeholder="Buscar producto por nombre o código SKU..." value="<?= htmlspecialchars($busqueda) ?>">
                 </div>
             </div>
-            <div class="col-md-3">
-                <select name="id_categoria" class="form-select">
-                    <option value="">Categoría: Todas</option>
-                    <?php foreach ($categorias as $cat): ?>
-                        <option value="<?= $cat['id_categoria'] ?>" <?= ($id_categoria == $cat['id_categoria']) ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($cat['nombre']) ?>
-                        </option>
-                    <?php endforeach; ?>
+
+            <div class="col-md-3 col-lg-3">
+                <select id="selectEstado" class="form-select">
+                    <option value="">Estado: Todos los ítems</option>
+                    <option value="activos">Solo Operativos</option>
+                    <option value="bajo">Stock Bajo Mínimo</option>
+                    <option value="inactivos">Inactivos (Baja lógica)</option>
                 </select>
             </div>
-            <div class="col-md-2">
-                <select name="filtro_stock" class="form-select">
-                    <option value="">Estado: Todos</option>
-                    <option value="bajo" <?= $filtro_stock === 'bajo' ? 'selected' : '' ?>>Bajo Mínimo</option>
-                    <option value="activos" <?= $filtro_stock === 'activos' ? 'selected' : '' ?>>Solo Activos</option>
-                    <option value="inactivos" <?= $filtro_stock === 'inactivos' ? 'selected' : '' ?>>Inactivos</option>
-                </select>
+
+            <div class="col-md-3 col-lg-4 d-flex justify-content-md-end align-items-center gap-2">
+                <span class="text-muted small fw-semibold me-1 d-none d-xl-inline" id="contadorResultados"><?= count($productos) ?> mostrados</span>
+                <div class="btn-group" role="group" aria-label="Cambiar vista">
+                    <button type="button" id="btnVistaGrid" class="btn btn-sm btn-dark fw-semibold px-3" onclick="cambiarVista('grid')" title="Vista Vitrina">
+                        <i class="bi bi-grid-fill me-1"></i> Tarjetas
+                    </button>
+                    <button type="button" id="btnVistaTabla" class="btn btn-sm btn-outline-dark fw-semibold px-3" onclick="cambiarVista('tabla')" title="Vista Tabla">
+                        <i class="bi bi-list-ul me-1"></i> Lista
+                    </button>
+                </div>
+                <button type="button" onclick="limpiarFiltrosEnVivo()" class="btn btn-sm btn-outline-secondary" title="Restablecer filtros">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
             </div>
-            <div class="col-md-2 d-flex gap-2">
-                <button type="submit" class="btn btn-dark w-100 fw-semibold">Buscar</button>
-                <?php if (!empty($busqueda) || !empty($id_categoria) || !empty($filtro_stock)): ?>
-                    <a href="index.php" class="btn btn-outline-secondary" title="Limpiar"><i class="bi bi-x-lg"></i></a>
-                <?php endif; ?>
-            </div>
-        </form>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 flex-wrap pt-2 border-top">
+            <span class="text-muted small fw-bold me-1"><i class="bi bi-tags text-success me-1"></i>Categorías:</span>
+            <button type="button" class="cat-chip active" data-cat="" onclick="seleccionarCategoriaChip('', this)">Todas</button>
+            <?php foreach ($categorias as $cat): ?>
+                <button type="button" class="cat-chip" data-cat="<?= (int)$cat['id_categoria'] ?>" onclick="seleccionarCategoriaChip('<?= (int)$cat['id_categoria'] ?>', this)">
+                    <?= htmlspecialchars($cat['nombre']) ?>
+                </button>
+            <?php endforeach; ?>
+        </div>
     </div>
 
-    <div class="table-container">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th class="ps-4">Imagen</th>
-                        <th>Código</th>
-                        <th>Producto</th>
-                        <th>Categoría & Proveedor</th>
-                        <th class="text-end">Precio</th>
-                        <th class="text-center">Nivel de Stock</th>
-                        <th class="text-center <?= $rolUsuario !== 1 ? 'pe-4' : '' ?>">Estado</th>
-                        <?php if ($rolUsuario === 1): ?>
-                            <th class="text-end pe-4">Acciones</th>
-                        <?php endif; ?>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($productos)): ?>
+    <div class="catalogo-wrapper" id="catalogoWrapper">
+
+        <div id="vistaCuadricula" class="row g-3">
+            <?php foreach ($productos as $p): ?>
+                <?php
+                    $activo  = ((int)$p['estado'] === 1);
+                    $critico = ($activo && $p['stock_actual'] < $p['stock_minimo']);
+                    $porcentajeStock = ($p['stock_minimo'] > 0)
+                        ? min(100, round(($p['stock_actual'] / ($p['stock_minimo'] * 2)) * 100))
+                        : ($p['stock_actual'] > 0 ? 100 : 0);
+                    $barColor = !$activo ? 'bg-secondary' : ($critico ? 'bg-danger' : 'bg-success');
+
+                    $prodJson = htmlspecialchars(json_encode([
+                        'id'          => (int)$p['id_producto'],
+                        'codigo'      => $p['codigo'],
+                        'nombre'      => $p['nombre'],
+                        'descripcion' => $p['descripcion'] ?: 'Sin descripción técnica registrada.',
+                        'imagen'      => $p['imagen'] ?: '',
+                        'categoria'   => $p['categoria_nombre'],
+                        'proveedor'   => $p['proveedor_nombre'] ?: 'Sin proveedor habitual asociado',
+                        'precio'      => number_format($p['precio'], 0, ',', '.'),
+                        'stock'       => (int)$p['stock_actual'],
+                        'minimo'      => (int)$p['stock_minimo'],
+                        'activo'      => $activo,
+                        'critico'     => $critico,
+                        'movimientos' => $movsPorProducto[(int)$p['id_producto']] ?? []
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
+                ?>
+                <div class="col-sm-6 col-md-4 col-lg-3 item-catalogo"
+                     data-codigo="<?= htmlspecialchars(mb_strtolower($p['codigo'])) ?>"
+                     data-nombre="<?= htmlspecialchars(mb_strtolower($p['nombre'])) ?>"
+                     data-categoria="<?= (int)$p['id_categoria'] ?>"
+                     data-activo="<?= $activo ? '1' : '0' ?>"
+                     data-critico="<?= $critico ? '1' : '0' ?>">
+                    <div class="product-card <?= !$activo ? 'card-inactiva' : ($critico ? 'card-critica' : '') ?>"
+                         data-prod="<?= $prodJson ?>"
+                         onclick="abrirDetalleDesdeElemento(this)">
+
+                        <div class="card-badge-top-left">
+                            <span class="sku-tag mono shadow-sm"><?= htmlspecialchars($p['codigo']) ?></span>
+                        </div>
+                        <div class="card-badge-top-right">
+                            <?php if (!$activo): ?>
+                                <span class="badge bg-secondary">Inactivo</span>
+                            <?php elseif ($critico): ?>
+                                <span class="badge bg-danger"><i class="bi bi-lightning-fill"></i> Bajo</span>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="card-img-stage">
+                            <?php if (!empty($p['imagen'])): ?>
+                                <img src="<?= htmlspecialchars($p['imagen']) ?>" alt="<?= htmlspecialchars($p['nombre']) ?>"
+                                     onerror="this.outerHTML='<div class=\'text-muted opacity-50\'><i class=\'bi bi-cpu\' style=\'font-size:3rem;\'></i></div>';">
+                            <?php else: ?>
+                                <div class="text-muted opacity-50"><i class="bi bi-cpu" style="font-size: 3rem;"></i></div>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="p-3 d-flex flex-column flex-grow-1">
+                            <div class="mb-1">
+                                <span class="cat-pill"><?= htmlspecialchars($p['categoria_nombre']) ?></span>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1 text-truncate" title="<?= htmlspecialchars($p['nombre']) ?>">
+                                <?= htmlspecialchars($p['nombre']) ?>
+                            </h6>
+                            <p class="text-muted small mb-3 text-truncate">
+                                <?= htmlspecialchars($p['descripcion'] ?: 'Sin descripción técnica') ?>
+                            </p>
+
+                            <div class="mt-auto">
+                                <div class="d-flex justify-content-between align-items-baseline mb-1">
+                                    <span class="fw-bold mono fs-5 text-dark">$<?= number_format($p['precio'], 0, ',', '.') ?></span>
+                                    <span class="mono small fw-bold <?= $critico ? 'text-danger' : 'text-success' ?>">
+                                        <?= $p['stock_actual'] ?> <span class="text-muted fw-normal">/ <?= $p['stock_minimo'] ?> mín</span>
+                                    </span>
+                                </div>
+                                <div class="stock-bar-bg mb-3">
+                                    <div class="stock-bar-fill <?= $barColor ?>" style="width: <?= $porcentajeStock ?>%;"></div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top" onclick="event.stopPropagation();">
+                                    <?php if ($activo): ?>
+                                        <a href="movimientos.php?producto=<?= (int)$p['id_producto'] ?>" class="btn btn-sm btn-outline-success fw-semibold px-2" title="Registrar entrada o salida de este producto">
+                                            <i class="bi bi-arrow-left-right me-1"></i>Ajustar Stock
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-muted small fst-italic">Producto inactivo</span>
+                                    <?php endif; ?>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="producto_form.php?id=<?= $p['id_producto'] ?>" class="btn btn-outline-dark" title="Editar ficha">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button type="button"
+                                                class="btn <?= $activo ? 'btn-outline-danger' : 'btn-outline-success' ?>"
+                                                title="<?= $activo ? 'Deshabilitar' : 'Habilitar' ?>"
+                                                onclick="abrirModalEstado(<?= $p['id_producto'] ?>, '<?= htmlspecialchars(addslashes($p['nombre'])) ?>', <?= $activo ? 0 : 1 ?>)">
+                                            <i class="bi <?= $activo ? 'bi-power' : 'bi-arrow-clockwise' ?>"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <div id="vistaTabla" class="table-container d-none">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
                         <tr>
-                            <td colspan="<?= $rolUsuario === 1 ? 8 : 7 ?>" class="text-center py-5 text-muted">
-                                <i class="bi bi-box2 fs-1 d-block mb-2"></i>
-                                No existen registros con los criterios seleccionados.
-                            </td>
+                            <th class="ps-4" style="width: 80px;">Imagen</th>
+                            <th style="width: 120px;">Código</th>
+                            <th>Producto</th>
+                            <th style="width: 220px;">Categoría & Proveedor</th>
+                            <th class="text-end" style="width: 120px;">Precio</th>
+                            <th class="text-center" style="width: 150px;">Nivel de Stock</th>
+                            <th class="text-center" style="width: 125px;">Estado</th>
+                            <th class="text-end pe-4" style="width: 145px;">Acciones</th>
                         </tr>
-                    <?php else: ?>
+                    </thead>
+                    <tbody>
                         <?php foreach ($productos as $p): ?>
                             <?php
                                 $activo = ((int)$p['estado'] === 1);
                                 $critico = ($activo && $p['stock_actual'] < $p['stock_minimo']);
                                 $claseTr = !$activo ? 'fila-apagada' : ($critico ? 'fila-alerta' : '');
-                                $prodJson = json_encode([
+                                $prodJson = htmlspecialchars(json_encode([
                                     'id'          => (int)$p['id_producto'],
                                     'codigo'      => $p['codigo'],
                                     'nombre'      => $p['nombre'],
@@ -324,13 +438,20 @@ foreach ($movsRaw as $mv) {
                                     'activo'      => $activo,
                                     'critico'     => $critico,
                                     'movimientos' => $movsPorProducto[(int)$p['id_producto']] ?? []
-                                ], JSON_HEX_APOS | JSON_HEX_QUOT);
+                                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
                             ?>
-                            <tr class="fila-clicable <?= $claseTr ?>" onclick='abrirDetalleProducto(<?= $prodJson ?>)'>
-                                <td class="ps-4" style="width: 75px;">
+                            <tr class="fila-clicable item-catalogo-tabla <?= $claseTr ?>"
+                                data-codigo="<?= htmlspecialchars(mb_strtolower($p['codigo'])) ?>"
+                                data-nombre="<?= htmlspecialchars(mb_strtolower($p['nombre'])) ?>"
+                                data-categoria="<?= (int)$p['id_categoria'] ?>"
+                                data-activo="<?= $activo ? '1' : '0' ?>"
+                                data-critico="<?= $critico ? '1' : '0' ?>"
+                                data-prod="<?= $prodJson ?>"
+                                onclick="abrirDetalleDesdeElemento(this)">
+                                <td class="ps-4">
                                     <?php if (!empty($p['imagen'])): ?>
                                         <img src="<?= htmlspecialchars($p['imagen']) ?>" alt="<?= htmlspecialchars($p['nombre']) ?>" class="prod-thumb"
-                                             onerror="this.outerHTML='<div class=\'prod-thumb-placeholder\'><i class=\'bi bi-image\'></i></div>';">
+                                             onerror="this.outerHTML='<div class=\'prod-thumb-placeholder\'><i class=\'bi bi-cpu\'></i></div>';">
                                     <?php else: ?>
                                         <div class="prod-thumb-placeholder"><i class="bi bi-cpu"></i></div>
                                     <?php endif; ?>
@@ -361,35 +482,66 @@ foreach ($movsRaw as $mv) {
                                         </span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="text-center <?= $rolUsuario !== 1 ? 'pe-4' : '' ?>">
+                                <td class="text-center">
                                     <?php if ($activo): ?>
                                         <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">● Operativo</span>
                                     <?php else: ?>
                                         <span class="badge bg-secondary bg-opacity-10 text-secondary border px-2 py-1">○ Baja lógica</span>
                                     <?php endif; ?>
                                 </td>
-                                <?php if ($rolUsuario === 1): ?>
-                                    <td class="text-end pe-4" onclick="event.stopPropagation();">
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="producto_form.php?id=<?= $p['id_producto'] ?>" class="btn btn-outline-dark" title="Editar">
-                                                <i class="bi bi-pencil"></i>
+                                <td class="text-end pe-4" onclick="event.stopPropagation();">
+                                    <div class="btn-group btn-group-sm">
+                                        <?php if ($activo): ?>
+                                            <a href="movimientos.php?producto=<?= (int)$p['id_producto'] ?>" class="btn btn-outline-success" title="Ajustar Stock">
+                                                <i class="bi bi-arrow-left-right"></i>
                                             </a>
-                                            <button type="button" 
-                                                    class="btn <?= $activo ? 'btn-outline-danger' : 'btn-outline-success' ?>" 
-                                                    title="<?= $activo ? 'Deshabilitar' : 'Habilitar' ?>"
-                                                    onclick="abrirModalEstado(<?= $p['id_producto'] ?>, '<?= htmlspecialchars(addslashes($p['nombre'])) ?>', <?= $activo ? 0 : 1 ?>)">
-                                                <i class="bi <?= $activo ? 'bi-power' : 'bi-arrow-clockwise' ?>"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                <?php endif; ?>
+                                        <?php endif; ?>
+                                        <a href="producto_form.php?id=<?= $p['id_producto'] ?>" class="btn btn-outline-dark" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button type="button" 
+                                                class="btn <?= $activo ? 'btn-outline-danger' : 'btn-outline-success' ?>" 
+                                                title="<?= $activo ? 'Deshabilitar' : 'Habilitar' ?>"
+                                                onclick="abrirModalEstado(<?= $p['id_producto'] ?>, '<?= htmlspecialchars(addslashes($p['nombre'])) ?>', <?= $activo ? 0 : 1 ?>)">
+                                            <i class="bi <?= $activo ? 'bi-power' : 'bi-arrow-clockwise' ?>"></i>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
+
+        <div id="estadoVacioCatalogo" class="panel-card text-center py-5 text-muted <?= empty($productos) ? '' : 'd-none' ?>">
+            <i class="bi bi-search fs-1 d-block mb-2 opacity-50"></i>
+            <h6 class="fw-bold text-dark">No se encontraron productos</h6>
+            <p class="small mb-3">Intenta con otro nombre, código SKU o limpia los filtros activos.</p>
+            <button type="button" onclick="limpiarFiltrosEnVivo()" class="btn btn-sm btn-emerald px-4">Ver todos los productos</button>
+        </div>
+
     </div>
+
+    <?php if (isset($_GET['msg'])): ?>
+        <div class="ts-toast-container">
+            <div class="ts-toast">
+                <i class="bi bi-check-circle-fill text-success fs-5 mt-0.5"></i>
+                <div class="flex-grow-1 small">
+                    <strong class="d-block ts-toast-title">Operación completada</strong>
+                    <span class="ts-toast-text">
+                        <?php
+                            if ($_GET['msg'] === 'creado') echo 'Producto incorporado al inventario.';
+                            elseif ($_GET['msg'] === 'editado') echo 'Ficha del producto actualizada.';
+                            elseif ($_GET['msg'] === 'estado_actualizado') echo 'Estado del producto modificado.';
+                        ?>
+                    </span>
+                </div>
+                <button type="button" class="btn-close btn-sm" onclick="cerrarToastFlotante(this.closest('.ts-toast'))"></button>
+                <div class="ts-toast-progress"></div>
+            </div>
+        </div>
+    <?php endif; ?>
 </main>
 
 <div class="modal fade" id="modalDetalleProducto" tabindex="-1" aria-hidden="true">
@@ -459,11 +611,12 @@ foreach ($movsRaw as $mv) {
                 </div>
             </div>
             <div class="modal-footer bg-light border-0">
-                <?php if ($rolUsuario === 1): ?>
-                    <a href="#" id="prodDetBtnEditar" class="btn btn-emerald px-4">
-                        <i class="bi bi-pencil-square me-1"></i> Editar Producto
-                    </a>
-                <?php endif; ?>
+                <a href="movimientos.php" id="prodDetBtnMover" class="btn btn-outline-success px-3">
+                    <i class="bi bi-arrow-left-right me-1"></i> Ajustar Stock
+                </a>
+                <a href="#" id="prodDetBtnEditar" class="btn btn-emerald px-4">
+                    <i class="bi bi-pencil-square me-1"></i> Editar Producto
+                </a>
                 <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
@@ -492,7 +645,119 @@ foreach ($movsRaw as $mv) {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function abrirDetalleProducto(p) {
+const inputBusqueda      = document.getElementById('inputBusqueda');
+const selectEstado       = document.getElementById('selectEstado');
+const catalogoWrapper    = document.getElementById('catalogoWrapper');
+const contadorResultados = document.getElementById('contadorResultados');
+let categoriaActiva      = '';
+let timerFiltro          = null;
+
+function cambiarVista(modo) {
+    const gridDiv  = document.getElementById('vistaCuadricula');
+    const tablaDiv = document.getElementById('vistaTabla');
+    const btnGrid  = document.getElementById('btnVistaGrid');
+    const btnTabla = document.getElementById('btnVistaTabla');
+
+    if (modo === 'tabla') {
+        gridDiv.classList.add('d-none');
+        tablaDiv.classList.remove('d-none');
+        btnTabla.className = 'btn btn-sm btn-dark fw-semibold px-3';
+        btnGrid.className  = 'btn btn-sm btn-outline-dark fw-semibold px-3';
+    } else {
+        tablaDiv.classList.add('d-none');
+        gridDiv.classList.remove('d-none');
+        btnGrid.className  = 'btn btn-sm btn-dark fw-semibold px-3';
+        btnTabla.className = 'btn btn-sm btn-outline-dark fw-semibold px-3';
+    }
+    localStorage.setItem('tecnostock_vista_catalogo', modo);
+}
+
+const vistaGuardada = localStorage.getItem('tecnostock_vista_catalogo');
+if (vistaGuardada === 'tabla') cambiarVista('tabla');
+
+function seleccionarFiltroKpi(estado, tileEl) {
+    document.querySelectorAll('.kpi-tile').forEach(t => t.classList.remove('kpi-selected'));
+    if (tileEl) tileEl.classList.add('kpi-selected');
+    selectEstado.value = estado;
+    aplicarFiltrosEnVivo();
+}
+
+function seleccionarCategoriaChip(idCat, chipEl) {
+    categoriaActiva = idCat;
+    document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+    if (chipEl) chipEl.classList.add('active');
+    aplicarFiltrosEnVivo();
+}
+
+function aplicarFiltrosEnVivo() {
+    const texto = inputBusqueda.value.trim().toLowerCase();
+    const est   = selectEstado.value;
+
+    const cards = document.querySelectorAll('.item-catalogo');
+    const filas = document.querySelectorAll('.item-catalogo-tabla');
+    let visibles = 0;
+
+    cards.forEach((card, idx) => {
+        const codigo   = card.getAttribute('data-codigo') || '';
+        const nombre   = card.getAttribute('data-nombre') || '';
+        const filaCat  = card.getAttribute('data-categoria') || '';
+        const esActivo = card.getAttribute('data-activo') === '1';
+        const esCrit   = card.getAttribute('data-critico') === '1';
+
+        const coincideTexto = !texto || codigo.includes(texto) || nombre.includes(texto);
+        const coincideCat   = !categoriaActiva || filaCat === categoriaActiva;
+
+        let coincideEst = true;
+        if (est === 'bajo') coincideEst = esCrit;
+        else if (est === 'activos') coincideEst = esActivo;
+        else if (est === 'inactivos') coincideEst = !esActivo;
+
+        const mostrar = (coincideTexto && coincideCat && coincideEst);
+        card.classList.toggle('d-none', !mostrar);
+        if (filas[idx]) filas[idx].classList.toggle('d-none', !mostrar);
+
+        if (mostrar) visibles++;
+    });
+
+    contadorResultados.textContent = `${visibles} ${visibles === 1 ? 'mostrado' : 'mostrados'}`;
+
+    const estadoVacio = document.getElementById('estadoVacioCatalogo');
+    if (estadoVacio) {
+        estadoVacio.classList.toggle('d-none', visibles > 0);
+    }
+}
+
+function programarFiltroSuave() {
+    clearTimeout(timerFiltro);
+    catalogoWrapper.classList.add('filtrando');
+    timerFiltro = setTimeout(() => {
+        aplicarFiltrosEnVivo();
+        catalogoWrapper.classList.remove('filtrando');
+    }, 120);
+}
+
+function limpiarFiltrosEnVivo() {
+    inputBusqueda.value = '';
+    selectEstado.value = '';
+    categoriaActiva = '';
+    document.querySelectorAll('.cat-chip').forEach((c, i) => c.classList.toggle('active', i === 0));
+    document.querySelectorAll('.kpi-tile').forEach((t, i) => t.classList.toggle('kpi-selected', i === 0));
+    aplicarFiltrosEnVivo();
+}
+
+inputBusqueda.addEventListener('input', programarFiltroSuave);
+selectEstado.addEventListener('change', () => {
+    document.querySelectorAll('.kpi-tile').forEach(t => t.classList.remove('kpi-selected'));
+    if (selectEstado.value === '') document.getElementById('tileTodos').classList.add('kpi-selected');
+    else if (selectEstado.value === 'activos') document.getElementById('tileActivos').classList.add('kpi-selected');
+    else if (selectEstado.value === 'bajo') document.getElementById('tileCriticos').classList.add('kpi-selected');
+    else if (selectEstado.value === 'inactivos') document.getElementById('tileInactivos').classList.add('kpi-selected');
+    aplicarFiltrosEnVivo();
+});
+
+function abrirDetalleDesdeElemento(el) {
+    const p = JSON.parse(el.getAttribute('data-prod'));
+
     document.getElementById('prodDetCodigo').textContent = p.codigo;
     document.getElementById('prodDetCategoria').textContent = p.categoria;
     document.getElementById('prodDetNombre').textContent = p.nombre;
@@ -511,8 +776,15 @@ function abrirDetalleProducto(p) {
         : '<span class="badge bg-secondary bg-opacity-10 text-secondary border">○ Baja lógica</span>';
 
     const imgBox = document.getElementById('prodDetImgBox');
+    imgBox.innerHTML = '';
     if (p.imagen) {
-        imgBox.innerHTML = `<img src="${p.imagen}" alt="${p.nombre}" onerror="this.outerHTML='<div class=\\'text-center text-muted\\'><i class=\\'bi bi-cpu fs-1 d-block mb-1\\'></i><small>Imagen no disponible</small></div>';">`;
+        const img = document.createElement('img');
+        img.src = p.imagen;
+        img.alt = p.nombre;
+        img.onerror = () => {
+            imgBox.innerHTML = '<div class="text-center text-muted"><i class="bi bi-cpu fs-1 d-block mb-1"></i><small>Imagen no disponible</small></div>';
+        };
+        imgBox.appendChild(img);
     } else {
         imgBox.innerHTML = '<div class="text-center text-muted"><i class="bi bi-cpu fs-1 d-block mb-1"></i><small>Sin imagen asignada</small></div>';
     }
@@ -538,11 +810,15 @@ function abrirDetalleProducto(p) {
         tbodyMovs.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-2">Sin movimientos registrados.</td></tr>';
     }
 
-    const btnEditar = document.getElementById('prodDetBtnEditar');
-    if (btnEditar) {
-        btnEditar.href = 'producto_form.php?id=' + p.id;
+    const btnMover = document.getElementById('prodDetBtnMover');
+    if (p.activo) {
+        btnMover.classList.remove('d-none');
+        btnMover.href = 'movimientos.php?producto=' + p.id;
+    } else {
+        btnMover.classList.add('d-none');
     }
 
+    document.getElementById('prodDetBtnEditar').href = 'producto_form.php?id=' + p.id;
     new bootstrap.Modal(document.getElementById('modalDetalleProducto')).show();
 }
 

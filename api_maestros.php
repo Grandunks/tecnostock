@@ -1,9 +1,8 @@
 <?php
-// api_maestros.php
 require_once 'config/conexion.php';
 require_once 'config/auth.php';
 
-verificarRol([1]);
+verificarAutenticacion();
 header('Content-Type: application/json; charset=utf-8');
 
 $accion = $_GET['accion'] ?? $_POST['accion'] ?? '';
@@ -19,13 +18,11 @@ if ($accion === 'siguiente_codigo') {
         exit;
     }
 
-    // Generar prefijo de 3 letras limpiando tildes
     $limpio = iconv('UTF-8', 'ASCII//TRANSLIT', $cat['nombre']);
     $soloLetras = preg_replace('/[^A-Za-z]/', '', $limpio);
     $prefijo = strtoupper(substr($soloLetras, 0, 3));
     if (strlen($prefijo) < 3) $prefijo = str_pad($prefijo, 3, 'X');
 
-    // Buscar el número más alto existente con ese prefijo
     $stmtCod = $pdo->prepare("SELECT codigo FROM producto WHERE codigo LIKE :pref");
     $stmtCod->execute(['pref' => $prefijo . '-%']);
     $codigos = $stmtCod->fetchAll(PDO::FETCH_COLUMN);

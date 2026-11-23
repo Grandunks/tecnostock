@@ -1,9 +1,8 @@
 <?php
-// producto_form.php
 require_once 'config/conexion.php';
 require_once 'config/auth.php';
 
-verificarRol([1]);
+verificarAutenticacion();
 
 $rolUsuario    = (int)$_SESSION['rol'];
 $nombreUsuario = $_SESSION['nombre'];
@@ -63,26 +62,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($id_categoria <= 0)   $errores[] = 'Debe seleccionar una categoría válida.';
 
     if ($precio === '' || !is_numeric($precio) || (int)$precio < 0) {
-        $errores[] = 'El precio debe ser un número entero mayor o igual a 0 (RN02).';
+        $errores[] = 'El precio debe ser un número entero mayor o igual a 0.';
     }
     if ($stock_actual === '' || !is_numeric($stock_actual) || (int)$stock_actual < 0) {
-        $errores[] = 'El stock actual debe ser un número entero mayor o igual a 0 (RN02).';
+        $errores[] = 'El stock actual debe ser un número entero mayor o igual a 0.';
     }
     if ($stock_minimo === '' || !is_numeric($stock_minimo) || (int)$stock_minimo < 0) {
-        $errores[] = 'El stock mínimo debe ser un número entero mayor o igual a 0 (RN02).';
+        $errores[] = 'El stock mínimo debe ser un número entero mayor o igual a 0.';
     }
 
-    // Procesar subida de archivo de imagen desde PC si se seleccionó uno
     $imagenFinal = !empty($imagenUrl) ? $imagenUrl : $imagenActual;
 
     if (isset($_FILES['imagen_archivo']) && $_FILES['imagen_archivo']['error'] === UPLOAD_ERR_OK) {
-        $archivoTmp  = $_FILES['imagen_archivo']['tmp_name'];
-        $nombreOrig  = $_FILES['imagen_archivo']['name'];
-        $ext         = strtolower(pathinfo($nombreOrig, PATHINFO_EXTENSION));
-        $permitidas  = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        $archivoTmp = $_FILES['imagen_archivo']['tmp_name'];
+        $nombreOrig = $_FILES['imagen_archivo']['name'];
+        $ext        = strtolower(pathinfo($nombreOrig, PATHINFO_EXTENSION));
+        $permitidas = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'];
 
         if (!in_array($ext, $permitidas)) {
-            $errores[] = 'Formato de imagen no válido. Use JPG, PNG, WEBP o GIF.';
+            $errores[] = 'Formato de imagen no válido. Use JPG, PNG, WEBP, AVIF o GIF.';
         } else {
             if (!is_dir('uploads')) {
                 mkdir('uploads', 0777, true);
@@ -108,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($stmtCheck->fetch()) {
-            $errores[] = "El código '$codigo' ya está registrado en otro producto (RN01).";
+            $errores[] = "El código '$codigo' ya está registrado en otro producto.";
         }
     }
 
@@ -135,7 +133,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Location: index.php?msg=editado');
                 exit;
             } else {
-                // Iniciar transacción para crear producto + movimiento inicial si tiene stock > 0
                 $pdo->beginTransaction();
 
                 $sql = "INSERT INTO producto (codigo, nombre, descripcion, imagen, precio, stock_actual, stock_minimo, estado, id_categoria, id_proveedor) 
@@ -155,10 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $idProductoNuevo = (int)$pdo->lastInsertId();
                 $stockInicialInt = (int)$stock_actual;
 
-                // Si el producto nace con stock > 0, dejar trazabilidad en Registro de Movimientos
                 if ($stockInicialInt > 0) {
                     $idUsuarioSesion = (int)$_SESSION['id_usuario'];
-
                     $sqlMovInicial = "INSERT INTO movimiento (fecha_hora, tipo, motivo, cantidad, observacion, id_producto, id_usuario, id_proveedor)
                                       VALUES (NOW(), 1, 'Stock inicial de catálogo', :cant, 'Alta inicial desde formulario de producto', :id_prod, :id_usu, :id_prov)";
                     $pdo->prepare($sqlMovInicial)->execute([
@@ -174,9 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
         } catch (PDOException $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
+            if ($pdo->inTransaction()) $pdo->rollBack();
             $errores[] = 'Error al guardar en la base de datos: ' . $e->getMessage();
         }
     }
@@ -192,6 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="assets/theme.css" rel="stylesheet">
     <style>
         :root {
             --bg-body: #f4f7f6;
@@ -207,52 +201,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .nav-pill-custom { color: #9ca3af; text-decoration: none; font-weight: 600; font-size: 0.9rem; padding: 0.5rem 0.9rem; border-radius: 8px; transition: all 0.2s ease; }
         .nav-pill-custom:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.05); }
         .nav-pill-custom.active { color: #111827; background-color: var(--emerald-primary); }
-        .btn-emerald { background-color: var(--emerald-primary); color: #fff; font-weight: 600; border: none; }
+        .btn-emerald { background-color: var(--emerald-primary); color: #fff; font-weight: 600; border: none; transition: all 0.2s; }
         .btn-emerald:hover { background-color: var(--emerald-dark); color: #fff; }
-        .form-card { background: #ffffff; border-radius: 16px; border: 1px solid #e5e7eb; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); overflow: hidden; }
-        .preview-box {
-            width: 100%; height: 190px; border-radius: 12px; border: 2px dashed #cbd5e1;
-            background-color: #f8fafc; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; overflow: hidden; position: relative;
-        }
-        .preview-box img { width: 100%; height: 100%; object-fit: cover; }
+        .panel-card { background: #ffffff; border-radius: 16px; border: 1px solid #e5e7eb; box-shadow: 0 4px 14px rgba(0,0,0,0.03); overflow: hidden; }
+        .section-divider { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.4rem; margin-bottom: 1rem; }
         .form-control:focus, .form-select:focus { border-color: var(--emerald-primary); box-shadow: 0 0 0 0.2rem rgba(16,185,129,0.18); }
+
+        .live-preview-card {
+            background: #ffffff; border-radius: 16px; border: 1px solid #e5e7eb;
+            box-shadow: 0 10px 25px -5px rgba(17, 24, 39, 0.07); overflow: hidden;
+            position: sticky; top: 88px;
+        }
+        .live-img-stage {
+            width: 100%; height: 230px; background-color: #ffffff;
+            border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 14px; position: relative;
+        }
+        .live-img-stage img {
+            max-width: 100%; max-height: 100%; width: auto; height: auto;
+            object-fit: contain; border-radius: 8px;
+        }
+        .sku-tag {
+            background-color: #111827; color: #34d399; padding: 0.25rem 0.6rem;
+            border-radius: 6px; font-size: 0.8rem; font-weight: 700; display: inline-block; white-space: nowrap;
+        }
+        .cat-pill {
+            background-color: #eef2ff; color: #4f46e5; font-weight: 600;
+            font-size: 0.76rem; padding: 0.28rem 0.65rem; border-radius: 6px; display: inline-block;
+        }
     </style>
 </head>
 <body>
+<script src="assets/theme.js"></script>
 
-<header class="top-header sticky-top shadow-sm">
-    <div class="container-fluid px-4 d-flex flex-wrap align-items-center justify-content-between">
-        <div class="d-flex align-items-center gap-3 flex-wrap">
-            <a href="index.php" class="brand-logo me-2"><i class="bi bi-terminal-fill brand-dot me-1"></i>TECNO<span class="brand-dot">STOCK</span></a>
-            <nav class="d-flex gap-1 flex-wrap align-items-center">
-                <a href="index.php" class="nav-pill-custom"><i class="bi bi-layers-fill me-1"></i> Catálogo</a>
-                <a href="movimientos.php" class="nav-pill-custom"><i class="bi bi-arrow-left-right me-1"></i> Movimientos</a>
-                <a href="historial_movimientos.php" class="nav-pill-custom"><i class="bi bi-journal-text me-1"></i> Registro Global</a>
-                <a href="usuarios.php" class="nav-pill-custom"><i class="bi bi-people-fill me-1"></i> Usuarios</a>
-                <a href="producto_form.php" class="nav-pill-custom active"><i class="bi bi-plus-circle-fill me-1"></i> Registrar Producto</a>
-            </nav>
-        </div>
-        <div class="d-flex align-items-center gap-3">
-            <span class="text-white small fw-semibold d-none d-md-inline">
-                <?= htmlspecialchars($nombreUsuario) ?>
-                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 ms-1" style="font-size: 0.68rem;">
-                    <?= strtoupper(obtenerNombreRol($rolUsuario)) ?>
-                </span>
-            </span>
-            <a href="logout.php" class="btn btn-sm btn-outline-danger px-3 fw-semibold"><i class="bi bi-box-arrow-right me-1"></i>Salir</a>
-        </div>
-    </div>
-</header>
+<?php include 'includes/navbar.php'; ?>
 
-<main class="container py-4" style="max-width: 960px;">
-    <div class="d-flex align-items-center justify-content-between mb-4">
+<main class="container-fluid px-4 py-4" style="max-width: 1320px;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
         <div>
             <h3 class="fw-bold mb-0">
                 <i class="bi <?= $esEdicion ? 'bi-pencil-square' : 'bi-plus-square-fill' ?> text-success me-2"></i>
-                <?= $esEdicion ? 'Editar Ficha de Producto' : 'Registrar Nuevo Producto' ?>
+                <?= $esEdicion ? 'Modificar Producto del Catálogo' : 'Registrar Nuevo Producto' ?>
             </h3>
-            <span class="text-muted small">Complete los datos técnicos, clasificación y parámetros de stock</span>
+            <span class="text-muted small">Completa la ficha técnica y verifica en tiempo real cómo lucirá en el inventario</span>
         </div>
         <a href="index.php" class="btn btn-outline-dark btn-sm fw-semibold px-3">
             <i class="bi bi-arrow-left me-1"></i> Volver al Catálogo
@@ -266,19 +257,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     <?php endif; ?>
 
-    <div class="form-card">
-        <div class="p-3 bg-dark text-white d-flex justify-content-between align-items-center border-bottom border-success border-3">
-            <span class="fw-semibold small"><i class="bi bi-cpu text-success me-2"></i>FICHA MAESTRA DE INVENTARIO</span>
-            <span class="badge bg-success bg-opacity-25 text-success mono">3FN / PDO</span>
-        </div>
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="panel-card">
+                <div class="p-3 bg-dark text-white d-flex justify-content-between align-items-center border-bottom border-success border-3">
+                    <span class="fw-bold small"><i class="bi bi-sliders text-success me-2"></i>DATOS DEL ARTÍCULO</span>
+                    <span class="badge bg-success bg-opacity-25 text-success mono" style="font-size: 0.7rem;">CAMPOS OBLIGATORIOS (*)</span>
+                </div>
 
-        <form method="POST" enctype="multipart/form-data" id="formProducto" class="p-4" novalidate>
-            <input type="hidden" name="imagen_actual" value="<?= htmlspecialchars($imagen) ?>">
+                <form method="POST" enctype="multipart/form-data" id="formProducto" class="p-4" novalidate>
+                    <input type="hidden" name="imagen_actual" value="<?= htmlspecialchars($imagen) ?>">
 
-            <div class="row g-4">
-                <!-- Columna Izquierda: Datos Principales -->
-                <div class="col-lg-8">
-                    <div class="row g-3">
+                    <div class="section-divider"><i class="bi bi-upc-scan text-success me-1"></i> 1. Identificación y Clasificación</div>
+                    <div class="row g-3 mb-4">
                         <div class="col-md-6">
                             <label for="id_categoria" class="form-label fw-semibold small">Categoría <span class="text-danger">*</span></label>
                             <div class="input-group">
@@ -290,7 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <button type="button" class="btn btn-outline-success" title="Nueva Categoría" data-bs-toggle="modal" data-bs-target="#modalNuevaCategoria">
+                                <button type="button" class="btn btn-outline-success" title="Crear nueva categoría" data-bs-toggle="modal" data-bs-target="#modalNuevaCategoria">
                                     <i class="bi bi-plus-lg"></i>
                                 </button>
                             </div>
@@ -299,16 +290,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="col-md-6">
                             <label for="codigo" class="form-label fw-semibold small">
                                 Código SKU <span class="text-danger">*</span>
-                                <span class="text-success fw-normal" style="font-size: 0.75rem;">(Autogenerado por categoría)</span>
+                                <span class="text-success fw-normal" style="font-size: 0.72rem;">(Autogenerado)</span>
                             </label>
                             <input type="text" class="form-control mono fw-bold" id="codigo" name="codigo" 
-                                   value="<?= htmlspecialchars($codigo) ?>" placeholder="Ej: CAB-002" required>
+                                   value="<?= htmlspecialchars($codigo) ?>" placeholder="Ej: TEC-003" required>
                         </div>
 
                         <div class="col-12">
                             <label for="nombre" class="form-label fw-semibold small">Nombre del Producto <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="nombre" name="nombre" 
-                                   value="<?= htmlspecialchars($nombre) ?>" placeholder="Ej: Cable DisplayPort 1.4 Mallado 2m" required>
+                                   value="<?= htmlspecialchars($nombre) ?>" placeholder="Ej: Audífonos Gamer Inalámbricos G733 RGB" required>
                         </div>
 
                         <div class="col-12">
@@ -322,21 +313,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <button type="button" class="btn btn-outline-success" title="Nuevo Proveedor" data-bs-toggle="modal" data-bs-target="#modalNuevoProveedor">
+                                <button type="button" class="btn btn-outline-success" title="Crear nuevo proveedor" data-bs-toggle="modal" data-bs-target="#modalNuevoProveedor">
                                     <i class="bi bi-plus-lg"></i>
                                 </button>
                             </div>
                         </div>
+                    </div>
 
+                    <div class="section-divider"><i class="bi bi-bar-chart-steps text-success me-1"></i> 2. Precio y Parámetros de Stock</div>
+                    <div class="row g-3 mb-4">
                         <div class="col-md-4">
                             <label for="precio" class="form-label fw-semibold small">Precio Unitario ($) <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control mono" id="precio" name="precio" min="0" step="1"
-                                   value="<?= htmlspecialchars($precio) ?>" placeholder="0" required>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light fw-bold">$</span>
+                                <input type="number" class="form-control mono fw-bold" id="precio" name="precio" min="0" step="1"
+                                       value="<?= htmlspecialchars($precio) ?>" placeholder="0" required>
+                            </div>
                         </div>
 
                         <div class="col-md-4">
                             <label for="stock_actual" class="form-label fw-semibold small">Stock Actual <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control mono" id="stock_actual" name="stock_actual" min="0" step="1"
+                            <input type="number" class="form-control mono fw-bold" id="stock_actual" name="stock_actual" min="0" step="1"
                                    value="<?= htmlspecialchars($stock_actual) ?>" placeholder="0" required>
                         </div>
 
@@ -345,58 +342,117 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 Stock Crítico <span class="text-danger">*</span>
                                 <span class="text-muted fw-normal" style="font-size: 0.72rem;">(Sug. 20%)</span>
                             </label>
-                            <input type="number" class="form-control mono" id="stock_minimo" name="stock_minimo" min="0" step="1"
+                            <input type="number" class="form-control mono fw-bold" id="stock_minimo" name="stock_minimo" min="0" step="1"
                                    value="<?= htmlspecialchars($stock_minimo) ?>" placeholder="0" required>
+                        </div>
+                    </div>
+
+                    <div class="section-divider"><i class="bi bi-image text-success me-1"></i> 3. Fotografía y Especificaciones</div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="imagen_archivo" class="form-label fw-semibold small text-success">
+                                <i class="bi bi-upload me-1"></i>Subir desde tu dispositivo
+                            </label>
+                            <input type="file" class="form-control form-control-sm" id="imagen_archivo" name="imagen_archivo" accept="image/*">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="imagen_url" class="form-label fw-semibold small text-muted">
+                                <i class="bi bi-link-45deg me-1"></i>O pegar enlace URL de imagen
+                            </label>
+                            <input type="url" class="form-control form-control-sm" id="imagen_url" name="imagen_url" 
+                                   value="<?= (strpos($imagen, 'http') === 0) ? htmlspecialchars($imagen) : '' ?>" 
+                                   placeholder="https://ejemplo.com/producto.png">
                         </div>
 
                         <div class="col-12">
                             <label for="descripcion" class="form-label fw-semibold small">Descripción Técnica</label>
                             <textarea class="form-control" id="descripcion" name="descripcion" rows="2" 
-                                      placeholder="Especificaciones, compatibilidad o características..."><?= htmlspecialchars($descripcion) ?></textarea>
+                                      placeholder="Especificaciones, conectividad, compatibilidad o características clave..."><?= htmlspecialchars($descripcion) ?></textarea>
                         </div>
                     </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="live-preview-card">
+                <div class="p-3 bg-dark text-white d-flex justify-content-between align-items-center border-bottom border-success border-3">
+                    <span class="fw-bold small"><i class="bi bi-eye-fill text-success me-2"></i>VISTA PREVIA EN CATÁLOGO</span>
+                    <span class="badge bg-success bg-opacity-25 text-success" style="font-size: 0.68rem;">TIEMPO REAL</span>
                 </div>
 
-                <!-- Columna Derecha: Imagen del Producto -->
-                <div class="col-lg-4">
-                    <label class="form-label fw-semibold small">Imagen del Producto</label>
-                    <div class="preview-box mb-3" id="previewContainer">
-                        <?php if (!empty($imagen)): ?>
-                            <img src="<?= htmlspecialchars($imagen) ?>" id="previewImg" alt="Vista previa">
-                        <?php else: ?>
-                            <i class="bi bi-image fs-1 text-muted mb-1" id="previewIcon"></i>
-                            <span class="text-muted small" id="previewText">Sin imagen seleccionada</span>
-                            <img src="" id="previewImg" class="d-none" alt="Vista previa">
-                        <?php endif; ?>
+                <div class="live-img-stage">
+                    <?php if (!empty($imagen)): ?>
+                        <img src="<?= htmlspecialchars($imagen) ?>" id="livePreviewImg" alt="Vista previa">
+                        <div id="livePreviewPlaceholder" class="text-center text-muted d-none">
+                            <i class="bi bi-image fs-1 d-block mb-1 opacity-50"></i>
+                            <span class="small">La imagen completa aparecerá aquí</span>
+                        </div>
+                    <?php else: ?>
+                        <img src="" id="livePreviewImg" class="d-none" alt="Vista previa">
+                        <div id="livePreviewPlaceholder" class="text-center text-muted">
+                            <i class="bi bi-image fs-1 d-block mb-1 opacity-50"></i>
+                            <span class="small">La imagen completa aparecerá aquí</span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="p-4">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <span class="sku-tag mono" id="liveCodigo"><?= htmlspecialchars($codigo ?: 'SKU-000') ?></span>
+                        <span class="cat-pill" id="liveCategoria">Sin categoría</span>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="imagen_archivo" class="form-label fw-semibold small text-success">
-                            <i class="bi bi-upload me-1"></i>Subir desde tu dispositivo
-                        </label>
-                        <input type="file" class="form-control form-control-sm" id="imagen_archivo" name="imagen_archivo" accept="image/*">
+                    <h5 class="fw-bold text-dark mb-1" id="liveNombre">
+                        <?= htmlspecialchars($nombre ?: 'Nombre del producto...') ?>
+                    </h5>
+                    <p class="text-muted small mb-3" id="liveDescripcion" style="min-height: 38px;">
+                        <?= htmlspecialchars($descripcion ?: 'Aquí se mostrará la descripción técnica del producto en el catálogo.') ?>
+                    </p>
+
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <div class="row text-center g-2">
+                            <div class="col-4 border-end">
+                                <span class="text-muted d-block" style="font-size: 0.7rem;">PRECIO UNIT.</span>
+                                <span class="fw-bold mono fs-6 text-dark" id="livePrecio">
+                                    $<?= $precio !== '' ? number_format((int)$precio, 0, ',', '.') : '0' ?>
+                                </span>
+                            </div>
+                            <div class="col-4 border-end">
+                                <span class="text-muted d-block" style="font-size: 0.7rem;">STOCK INICIAL</span>
+                                <span class="fw-bold mono fs-6 text-success" id="liveStock">
+                                    <?= $stock_actual !== '' ? (int)$stock_actual : '0' ?> uds.
+                                </span>
+                            </div>
+                            <div class="col-4">
+                                <span class="text-muted d-block" style="font-size: 0.7rem;">ALERTA MÍN.</span>
+                                <span class="fw-bold mono fs-6 text-secondary" id="liveMinimo">
+                                    <?= $stock_minimo !== '' ? (int)$stock_minimo : '0' ?> uds.
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="imagen_url" class="form-label fw-semibold small text-muted">O pegar enlace URL directo</label>
-                        <input type="url" class="form-control form-control-sm" id="imagen_url" name="imagen_url" 
-                               value="<?= (strpos($imagen, 'http') === 0) ? htmlspecialchars($imagen) : '' ?>" 
-                               placeholder="https://...">
+                    <div class="d-flex align-items-center justify-content-between small text-muted">
+                        <span><i class="bi bi-building text-success me-1"></i><span id="liveProveedor">Sin proveedor</span></span>
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">● Operativo</span>
                     </div>
                 </div>
-            </div>
 
-            <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
-                <a href="index.php" class="btn btn-outline-secondary px-4">Cancelar</a>
-                <button type="submit" class="btn btn-emerald px-5">
-                    <i class="bi bi-check2-circle me-1"></i> Guardar Producto
-                </button>
+                <div class="px-4 py-3 bg-light border-top d-flex justify-content-end gap-2">
+                    <a href="index.php" class="btn btn-outline-secondary px-4 fw-semibold">
+                        Cancelar
+                    </a>
+                    <button type="submit" form="formProducto" class="btn btn-emerald px-4 fw-semibold shadow-sm">
+                        <i class="bi bi-check2-circle me-1"></i> <?= $esEdicion ? 'Confirmar Cambios' : 'Confirmar y Guardar' ?>
+                    </button>
+                </div>
             </div>
-        </form>
+        </div>
     </div>
 </main>
 
-<!-- Modal Crear Nueva Categoría -->
 <div class="modal fade" id="modalNuevaCategoria" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -408,7 +464,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div id="errCat" class="alert alert-danger small d-none"></div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold small">Nombre de Categoría *</label>
-                    <input type="text" id="nuevaCatNombre" class="form-control" placeholder="Ej: Monitores y Pantallas">
+                    <input type="text" id="nuevaCatNombre" class="form-control" placeholder="Ej: Audífonos y Audio">
                 </div>
                 <div>
                     <label class="form-label fw-semibold small">Descripción (Opcional)</label>
@@ -423,7 +479,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
-<!-- Modal Crear Nuevo Proveedor -->
 <div class="modal fade" id="modalNuevoProveedor" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -466,8 +521,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>
 const esEdicion = <?= $esEdicion ? 'true' : 'false' ?>;
 
-// 1. Autocompletar Código SKU al elegir categoría (solo en productos nuevos)
-document.getElementById('id_categoria').addEventListener('change', function() {
+const inCategoria   = document.getElementById('id_categoria');
+const inCodigo      = document.getElementById('codigo');
+const inNombre      = document.getElementById('nombre');
+const inProveedor   = document.getElementById('id_proveedor');
+const inPrecio      = document.getElementById('precio');
+const inStockActual = document.getElementById('stock_actual');
+const inStockMinimo = document.getElementById('stock_minimo');
+const inDescripcion = document.getElementById('descripcion');
+const inArchivo     = document.getElementById('imagen_archivo');
+const inUrl         = document.getElementById('imagen_url');
+
+function actualizarVistaPreviaFicha() {
+    document.getElementById('liveCodigo').textContent = inCodigo.value.trim().toUpperCase() || 'SKU-000';
+    document.getElementById('liveNombre').textContent = inNombre.value.trim() || 'Nombre del producto...';
+    document.getElementById('liveDescripcion').textContent = inDescripcion.value.trim() || 'Aquí se mostrará la descripción técnica del producto en el catálogo.';
+
+    const catText = inCategoria.value ? inCategoria.options[inCategoria.selectedIndex].text : 'Sin categoría';
+    document.getElementById('liveCategoria').textContent = catText;
+
+    const provText = inProveedor.value ? inProveedor.options[inProveedor.selectedIndex].text : 'Sin proveedor';
+    document.getElementById('liveProveedor').textContent = provText;
+
+    const pNum = parseInt(inPrecio.value || '0', 10) || 0;
+    document.getElementById('livePrecio').textContent = '$' + pNum.toLocaleString('es-CL');
+
+    const sAct = parseInt(inStockActual.value || '0', 10) || 0;
+    const sMin = parseInt(inStockMinimo.value || '0', 10) || 0;
+
+    const liveStockEl = document.getElementById('liveStock');
+    liveStockEl.textContent = sAct + ' uds.';
+    liveStockEl.className = 'fw-bold mono fs-6 ' + (sAct < sMin ? 'text-danger' : 'text-success');
+    document.getElementById('liveMinimo').textContent = sMin + ' uds.';
+}
+
+function mostrarImagenPrevia(src) {
+    const img = document.getElementById('livePreviewImg');
+    const ph  = document.getElementById('livePreviewPlaceholder');
+    if (src) {
+        img.src = src;
+        img.classList.remove('d-none');
+        ph.classList.add('d-none');
+        img.onerror = () => {
+            img.classList.add('d-none');
+            ph.classList.remove('d-none');
+        };
+    } else {
+        img.classList.add('d-none');
+        ph.classList.remove('d-none');
+    }
+}
+
+inCategoria.addEventListener('change', function() {
+    actualizarVistaPreviaFicha();
     const idCat = this.value;
     if (!idCat || esEdicion) return;
 
@@ -475,54 +581,51 @@ document.getElementById('id_categoria').addEventListener('change', function() {
         .then(r => r.json())
         .then(data => {
             if (data.ok) {
-                document.getElementById('codigo').value = data.codigo;
+                inCodigo.value = data.codigo;
+                actualizarVistaPreviaFicha();
             }
         });
 });
 
-// 2. Sugerir automáticamente el 20% del Stock Actual en Stock Crítico (editable)
 let stockMinimoEditadoManual = esEdicion;
-document.getElementById('stock_minimo').addEventListener('input', () => {
+inStockMinimo.addEventListener('input', () => {
     stockMinimoEditadoManual = true;
+    actualizarVistaPreviaFicha();
 });
-document.getElementById('stock_actual').addEventListener('input', function() {
+
+inStockActual.addEventListener('input', function() {
     if (!stockMinimoEditadoManual) {
         const val = parseInt(this.value, 10);
         if (!isNaN(val) && val >= 0) {
-            document.getElementById('stock_minimo').value = Math.round(val * 0.20);
+            inStockMinimo.value = Math.round(val * 0.20);
         }
     }
+    actualizarVistaPreviaFicha();
 });
 
-// 3. Vista previa en vivo al subir archivo o pegar URL
-function mostrarPreview(src) {
-    const img = document.getElementById('previewImg');
-    const icon = document.getElementById('previewIcon');
-    const txt = document.getElementById('previewText');
-    if (src) {
-        img.src = src;
-        img.classList.remove('d-none');
-        if (icon) icon.classList.add('d-none');
-        if (txt) txt.classList.add('d-none');
-    }
-}
+[inCodigo, inNombre, inProveedor, inPrecio, inDescripcion].forEach(el => {
+    el.addEventListener('input', actualizarVistaPreviaFicha);
+    el.addEventListener('change', actualizarVistaPreviaFicha);
+});
 
-document.getElementById('imagen_archivo').addEventListener('change', function(e) {
+inArchivo.addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file) {
-        document.getElementById('imagen_url').value = '';
-        mostrarPreview(URL.createObjectURL(file));
+        inUrl.value = '';
+        mostrarImagenPrevia(URL.createObjectURL(file));
     }
 });
 
-document.getElementById('imagen_url').addEventListener('input', function() {
-    if (this.value.trim() !== '') {
-        document.getElementById('imagen_archivo').value = '';
-        mostrarPreview(this.value.trim());
+inUrl.addEventListener('input', function() {
+    const link = this.value.trim();
+    if (link !== '') {
+        inArchivo.value = '';
+        mostrarImagenPrevia(link);
     }
 });
 
-// 4. Guardar Nueva Categoría vía AJAX
+actualizarVistaPreviaFicha();
+
 function guardarCategoria() {
     const fd = new FormData();
     fd.append('accion', 'crear_categoria');
@@ -533,10 +636,9 @@ function guardarCategoria() {
         .then(r => r.json())
         .then(res => {
             if (res.ok) {
-                const sel = document.getElementById('id_categoria');
                 const opt = new Option(res.nombre, res.id, true, true);
-                sel.add(opt);
-                sel.dispatchEvent(new Event('change'));
+                inCategoria.add(opt);
+                inCategoria.dispatchEvent(new Event('change'));
                 bootstrap.Modal.getInstance(document.getElementById('modalNuevaCategoria')).hide();
                 document.getElementById('nuevaCatNombre').value = '';
                 document.getElementById('nuevaCatDesc').value = '';
@@ -548,7 +650,6 @@ function guardarCategoria() {
         });
 }
 
-// 5. Guardar Nuevo Proveedor vía AJAX
 function guardarProveedor() {
     const fd = new FormData();
     fd.append('accion', 'crear_proveedor');
@@ -561,9 +662,9 @@ function guardarProveedor() {
         .then(r => r.json())
         .then(res => {
             if (res.ok) {
-                const sel = document.getElementById('id_proveedor');
                 const opt = new Option(res.nombre, res.id, true, true);
-                sel.add(opt);
+                inProveedor.add(opt);
+                actualizarVistaPreviaFicha();
                 bootstrap.Modal.getInstance(document.getElementById('modalNuevoProveedor')).hide();
                 document.getElementById('nuevoProvRut').value = '';
                 document.getElementById('nuevoProvRazon').value = '';

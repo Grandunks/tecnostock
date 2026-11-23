@@ -1,0 +1,288 @@
+html {
+    overflow-y: scroll;
+}
+
+body {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Toast flotante inferior derecha adaptable a Modo Claro y Modo Oscuro */
+.ts-toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1090;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 390px;
+    width: calc(100% - 48px);
+    pointer-events: none;
+}
+
+/* Estilo por defecto: Modo Claro */
+.ts-toast {
+    pointer-events: auto;
+    background-color: #ffffff;
+    color: #1f2937;
+    border: 1px solid #e5e7eb;
+    border-left: 4px solid #10b981;
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    box-shadow: 0 18px 35px -8px rgba(17, 24, 39, 0.16);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    position: relative;
+    overflow: hidden;
+    animation: tsToastIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ts-toast-title {
+    color: #111827;
+}
+
+.ts-toast-text {
+    color: #4b5563;
+}
+
+/* Estilo cuando está activo el Modo Oscuro */
+body.dark-mode .ts-toast {
+    background-color: #111827;
+    color: #f9fafb;
+    border-color: #1f2937;
+    box-shadow: 0 18px 35px -8px rgba(0, 0, 0, 0.45);
+}
+
+body.dark-mode .ts-toast-title {
+    color: #f9fafb;
+}
+
+body.dark-mode .ts-toast-text {
+    color: #9ca3af;
+}
+
+body.dark-mode .ts-toast .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+.ts-toast.ts-toast-danger {
+    border-left-color: #ef4444;
+}
+
+.ts-toast.ts-toast-hide {
+    animation: tsToastOut 0.28s ease forwards;
+}
+
+.ts-toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    width: 100%;
+    background-color: #10b981;
+    animation: tsToastBar 4s linear forwards;
+}
+
+.ts-toast.ts-toast-danger .ts-toast-progress {
+    background-color: #ef4444;
+}
+
+@keyframes tsToastIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes tsToastOut {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 0; transform: translateY(14px) scale(0.96); }
+}
+
+@keyframes tsToastBar {
+    from { width: 100%; }
+    to   { width: 0%; }
+}
+
+/* Modo Oscuro */
+body.dark-mode {
+    background-color: #0b0f19 !important;
+    color: #e5e7eb !important;
+}
+
+body.dark-mode .panel-card,
+body.dark-mode .filter-bar,
+body.dark-mode .toolbar-box,
+body.dark-mode .table-container,
+body.dark-mode .stat-card,
+body.dark-mode .live-preview-card,
+body.dark-mode .card,
+body.dark-mode .modal-content {
+    background-color: #111827 !important;
+    border-color: #1f2937 !important;
+    color: #f3f4f6 !important;
+}
+
+body.dark-mode .stat-card.stat-danger {
+    background-color: #2a1215 !important;
+    border-color: #7f1d1d !important;
+}
+
+body.dark-mode .bg-white,
+body.dark-mode .bg-light,
+body.dark-mode .modal-footer.bg-light,
+body.dark-mode .panel-card > .bg-white,
+body.dark-mode .live-preview-card > .bg-light {
+    background-color: #161f32 !important;
+    border-color: #1f2937 !important;
+    color: #e5e7eb !important;
+}
+
+body.dark-mode .text-dark {
+    color: #f9fafb !important;
+}
+
+body.dark-mode .text-muted,
+body.dark-mode .text-secondary {
+    color: #9ca3af !important;
+}
+
+body.dark-mode .cat-pill {
+    background-color: rgba(99, 102, 241, 0.18) !important;
+    color: #a5b4fc !important;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+body.dark-mode .btn-dark {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #111827 !important;
+}
+
+body.dark-mode .btn-outline-dark {
+    background-color: #161f32 !important;
+    color: #e5e7eb !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .btn-outline-dark:hover {
+    background-color: #1f2937 !important;
+    color: #ffffff !important;
+}
+
+body.dark-mode .btn-outline-secondary {
+    color: #cbd5e1 !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .btn-outline-secondary:hover {
+    background-color: #1f2937 !important;
+    color: #ffffff !important;
+}
+
+body.dark-mode .table {
+    --bs-table-bg: #111827;
+    --bs-table-color: #e5e7eb;
+    --bs-table-border-color: #1f2937;
+    --bs-table-hover-bg: #1f2937;
+    --bs-table-hover-color: #ffffff;
+    color: #e5e7eb !important;
+}
+
+body.dark-mode .table tbody td {
+    border-bottom-color: #1f2937 !important;
+}
+
+body.dark-mode .table-light th {
+    background-color: #1f2937 !important;
+    color: #f3f4f6 !important;
+    border-color: #374151 !important;
+}
+
+body.dark-mode .fila-alerta {
+    background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+body.dark-mode .fila-apagada {
+    background-color: #0d1320 !important;
+}
+
+body.dark-mode .fila-clicable:hover {
+    background-color: rgba(16, 185, 129, 0.14) !important;
+}
+
+body.dark-mode .form-control,
+body.dark-mode .form-select,
+body.dark-mode .input-group-text {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+
+body.dark-mode .form-control::placeholder {
+    color: #64748b !important;
+}
+
+body.dark-mode .tipo-label,
+body.dark-mode .product-preview-card,
+body.dark-mode .stock-meter {
+    background: #161f32 !important;
+    border-color: #334155 !important;
+    color: #e5e7eb !important;
+}
+
+body.dark-mode .tipo-option input[value="1"]:checked + .tipo-label {
+    background: rgba(16, 185, 129, 0.18) !important;
+    border-color: #10b981 !important;
+    color: #34d399 !important;
+}
+
+body.dark-mode .tipo-option input[value="2"]:checked + .tipo-label {
+    background: rgba(239, 68, 68, 0.18) !important;
+    border-color: #ef4444 !important;
+    color: #f87171 !important;
+}
+
+body.dark-mode .visual-dropdown {
+    background-color: #111827 !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .visual-item {
+    border-bottom-color: #1f2937 !important;
+}
+
+body.dark-mode .visual-item:hover {
+    background-color: #1f2937 !important;
+}
+
+body.dark-mode .quick-qty-btn {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e5e7eb !important;
+}
+
+body.dark-mode .border,
+body.dark-mode .border-top,
+body.dark-mode .border-bottom,
+body.dark-mode .border-end {
+    border-color: #1f2937 !important;
+}
+
+body.dark-mode .demo-box {
+    background-color: #161f32 !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .demo-item:hover {
+    background-color: #1f2937 !important;
+}
+
+body.dark-mode .demo-email {
+    color: #f3f4f6 !important;
+}
+
+/* Ocultar el botón nativo de mostrar contraseña de Edge/IE */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}

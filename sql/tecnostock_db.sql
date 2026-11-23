@@ -4,8 +4,13 @@ USE tecnostock_db;
 
 CREATE TABLE usuario (
     id_usuario INT AUTO_INCREMENT PRIMARY KEY,
+    rut VARCHAR(15) NOT NULL UNIQUE,
     nombre VARCHAR(100) NOT NULL,
+    apellido_paterno VARCHAR(60) NOT NULL,
+    apellido_materno VARCHAR(60) NOT NULL,
     correo VARCHAR(120) NOT NULL UNIQUE,
+    telefono VARCHAR(25) DEFAULT NULL,
+    direccion VARCHAR(255) DEFAULT NULL,
     clave VARCHAR(255) NOT NULL,
     rol TINYINT(1) NOT NULL DEFAULT 2 CHECK (rol IN (1, 2)),
     estado TINYINT(1) NOT NULL DEFAULT 1
@@ -76,9 +81,31 @@ CREATE TABLE movimiento (
         ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
-INSERT INTO usuario (nombre, correo, clave, rol, estado) VALUES
-('Admin', 'admin@tecnostock.cl', '$2y$10$dynO0rw/5evpsKRV9ohuseyk8FiRP0v8g6n./jOmzBNyKcrKx61Om', 1, 1),
-('Usuario', 'usuario@tecnostock.cl', '$2y$10$dynO0rw/5evpsKRV9ohuseyk8FiRP0v8g6n./jOmzBNyKcrKx61Om', 2, 1);
+CREATE TABLE solicitud_clave (
+    id_solicitud INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    rut_ingresado VARCHAR(15) NOT NULL,
+    nombre_ingresado VARCHAR(100) NOT NULL,
+    paterno_ingresado VARCHAR(60) NOT NULL,
+    materno_ingresado VARCHAR(60) NOT NULL,
+    correo_ingresado VARCHAR(120) NOT NULL,
+    rol_declarado TINYINT(1) NOT NULL,
+    dato_verificacion VARCHAR(255) NOT NULL,
+    coincide_rut TINYINT(1) NOT NULL DEFAULT 0,
+    coincide_nombre TINYINT(1) NOT NULL DEFAULT 0,
+    coincide_rol TINYINT(1) NOT NULL DEFAULT 0,
+    estado TINYINT(1) NOT NULL DEFAULT 0,
+    fecha_solicitud DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_resolucion DATETIME DEFAULT NULL,
+    CONSTRAINT fk_solicitud_usuario FOREIGN KEY (id_usuario)
+        REFERENCES usuario(id_usuario)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+INSERT INTO usuario (rut, nombre, apellido_paterno, apellido_materno, correo, telefono, direccion, clave, rol, estado) VALUES
+('19.111.111-1', 'Admin', 'Sistema', 'TecnoStock', 'admin@tecnostock.cl', '+56 9 1111 1111', 'Santiago, Chile', '$2y$10$dynO0rw/5evpsKRV9ohuseyk8FiRP0v8g6n./jOmzBNyKcrKx61Om', 1, 1),
+('18.222.222-2', 'Usuario', 'Bodega', 'General', 'usuario@tecnostock.cl', '+56 9 2222 2222', 'Santiago, Chile', '$2y$10$dynO0rw/5evpsKRV9ohuseyk8FiRP0v8g6n./jOmzBNyKcrKx61Om', 2, 1);
 
 INSERT INTO categoria (nombre, descripcion, estado) VALUES
 ('Periféricos', 'Teclados, ratones, audífonos y accesorios de entrada/salida', 1),
