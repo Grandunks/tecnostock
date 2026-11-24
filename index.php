@@ -4,50 +4,18 @@ require_once 'config/auth.php';
 
 verificarAutenticacion();
 
-$rolUsuario    = (int)$_SESSION['rol'];
-$nombreUsuario = $_SESSION['nombre'];
-
-$busqueda     = trim($_GET['busqueda'] ?? '');
-$id_categoria = trim($_GET['id_categoria'] ?? '');
-$filtro_stock = trim($_GET['filtro_stock'] ?? '');
-
 $categorias = $pdo->query("SELECT id_categoria, nombre FROM categoria WHERE estado = 1 ORDER BY nombre ASC")->fetchAll();
 
-$sql = "SELECT p.id_producto, p.codigo, p.nombre, p.descripcion, p.imagen, p.precio, 
-               p.stock_actual, p.stock_minimo, p.estado, p.id_categoria,
-               c.nombre AS categoria_nombre,
-               pr.razon_social AS proveedor_nombre
-        FROM producto p
-        INNER JOIN categoria c ON p.id_categoria = c.id_categoria
-        LEFT JOIN proveedor pr ON p.id_proveedor = pr.id_proveedor
-        WHERE 1 = 1";
-
-$params = [];
-
-if (!empty($busqueda)) {
-    $sql .= " AND (p.codigo LIKE :busqueda1 OR p.nombre LIKE :busqueda2)";
-    $params['busqueda1'] = "%$busqueda%";
-    $params['busqueda2'] = "%$busqueda%";
-}
-
-if (!empty($id_categoria)) {
-    $sql .= " AND p.id_categoria = :id_categoria";
-    $params['id_categoria'] = $id_categoria;
-}
-
-if ($filtro_stock === 'bajo') {
-    $sql .= " AND p.stock_actual < p.stock_minimo AND p.estado = 1";
-} elseif ($filtro_stock === 'activos') {
-    $sql .= " AND p.estado = 1";
-} elseif ($filtro_stock === 'inactivos') {
-    $sql .= " AND p.estado = 0";
-}
-
-$sql .= " ORDER BY p.estado DESC, (p.stock_actual < p.stock_minimo) DESC, p.id_producto DESC";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$productos = $stmt->fetchAll();
+$productos = $pdo->query("
+    SELECT p.id_producto, p.codigo, p.nombre, p.descripcion, p.imagen, p.precio, 
+           p.stock_actual, p.stock_minimo, p.estado, p.id_categoria,
+           c.nombre AS categoria_nombre,
+           pr.razon_social AS proveedor_nombre
+    FROM producto p
+    INNER JOIN categoria c ON p.id_categoria = c.id_categoria
+    LEFT JOIN proveedor pr ON p.id_proveedor = pr.id_proveedor
+    ORDER BY p.estado DESC, (p.stock_actual < p.stock_minimo) DESC, p.id_producto DESC
+")->fetchAll();
 
 $kpis = $pdo->query("
     SELECT 
@@ -80,6 +48,7 @@ foreach ($movsRaw as $mv) {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -256,7 +225,7 @@ foreach ($movsRaw as $mv) {
                 <div class="input-group">
                     <span class="input-group-text bg-white text-success"><i class="bi bi-search"></i></span>
                     <input type="text" id="inputBusqueda" class="form-control" autocomplete="off"
-                           placeholder="Buscar producto por nombre o código SKU..." value="<?= htmlspecialchars($busqueda) ?>">
+                        placeholder="Buscar producto por nombre o código SKU...">
                 </div>
             </div>
 

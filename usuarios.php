@@ -786,6 +786,7 @@ function abrirEditarUsuario(u) {
     document.getElementById('editUserMaterno').value = u.materno;
     document.getElementById('editUserCorreo').value  = u.correo;
     document.getElementById('editUserRol').value     = u.rol;
+    document.getElementById('editUserClave').value   = '';
     new bootstrap.Modal(document.getElementById('modalEditarUsuario')).show();
 }
 

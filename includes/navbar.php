@@ -13,6 +13,16 @@ if ($navRol === 1 && isset($pdo)) {
 }
 ?>
 <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f4f7f6; color: #1f2937; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .top-header { background-color: #111827; border-bottom: 3px solid #10b981; padding: 0.85rem 0; }
+    .brand-logo { font-weight: 700; font-size: 1.35rem; color: #ffffff; text-decoration: none; letter-spacing: -0.03em; }
+    .brand-dot { color: #10b981; }
+    .nav-pill-custom { color: #9ca3af; text-decoration: none; font-weight: 600; font-size: 0.9rem; padding: 0.5rem 0.9rem; border-radius: 8px; transition: all 0.2s ease; }
+    .nav-pill-custom:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.05); }
+    .nav-pill-custom.active { color: #111827; background-color: #10b981; }
+    .btn-emerald { background-color: #10b981; color: #ffffff; font-weight: 600; border: none; transition: all 0.2s ease; }
+    .btn-emerald:hover { background-color: #059669; color: #ffffff; }
     .btn-profile-pill {
         background-color: rgba(255, 255, 255, 0.06);
         color: #f9fafb;
